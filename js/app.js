@@ -57,8 +57,8 @@ const App = {
 
   currentView: "dashboard",
 
-  init() {
-    seedDemoData();
+  async init() {
+    await DB.syncFromServer();
     const savedTheme = localStorage.getItem(DB.KEYS.theme) || "light";
     this.setTheme(savedTheme, false);
     const user = Auth.getCurrentUser();
@@ -127,10 +127,10 @@ const App = {
           <button type="button" onclick="App.fillDemo('student@hostel.com','student123')">Student — student@hostel.com / student123</button>
         </div> -->
       `;
-      document.getElementById("login-form").addEventListener("submit", (e) => {
+      document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
-        const result = Auth.login(fd.get("email"), fd.get("password"));
+        const result = await Auth.login(fd.get("email"), fd.get("password"));
         if (!result.ok) return Utils.showToast(result.error, "error");
         Utils.showToast(
           `Welcome back, ${result.user.name.split(" ")[0]}!`,
@@ -156,7 +156,7 @@ const App = {
       `;
       document
         .getElementById("register-form")
-        .addEventListener("submit", (e) => {
+        .addEventListener("submit", async (e) => {
           e.preventDefault();
           const fd = new FormData(e.target);
           const payload = Object.fromEntries(fd.entries());
@@ -167,7 +167,7 @@ const App = {
               "Password must be at least 6 characters.",
               "error",
             );
-          const result = Auth.register(payload);
+          const result = await Auth.register(payload);
           if (!result.ok) return Utils.showToast(result.error, "error");
           Utils.showToast("Account created. Please sign in.", "success");
           this.renderAuthForm("login");
@@ -183,7 +183,7 @@ const App = {
         </form>
         <div class="auth-links"><a href="#" onclick="App.renderAuthForm('login');return false;">Back to Sign In</a></div>
       `;
-      document.getElementById("forgot-form").addEventListener("submit", (e) => {
+      document.getElementById("forgot-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
         if (fd.get("password").length < 6)
@@ -191,7 +191,7 @@ const App = {
             "Password must be at least 6 characters.",
             "error",
           );
-        const result = Auth.resetPassword(fd.get("email"), fd.get("password"));
+        const result = await Auth.resetPassword(fd.get("email"), fd.get("password"));
         if (!result.ok) return Utils.showToast(result.error, "error");
         Utils.showToast("Password reset. Please sign in.", "success");
         this.renderAuthForm("login");

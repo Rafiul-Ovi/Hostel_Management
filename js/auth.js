@@ -14,17 +14,23 @@ const Auth = {
     }
   },
 
-  login(email, password) {
-    const users = DB.getData(DB.KEYS.users);
-    const user = users.find(
-      (u) =>
-        u.email.toLowerCase() === email.trim().toLowerCase() &&
-        u.password === password,
-    );
-    if (!user) return { ok: false, error: "Invalid email or password." };
-    const { password: _pw, ...safeUser } = user;
-    localStorage.setItem(DB.KEYS.currentUser, JSON.stringify(safeUser));
-    return { ok: true, user: safeUser };
+  async login(email, password) {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        return { ok: false, error: result.message || 'Invalid email or password.' };
+      }
+      const { user } = result;
+      localStorage.setItem(DB.KEYS.currentUser, JSON.stringify(user));
+      return { ok: true, user };
+    } catch (error) {
+      return { ok: false, error: 'Unable to reach the server.' };
+    }
   },
 
   logout() {
@@ -47,57 +53,37 @@ const Auth = {
     return roles.includes(user.role);
   },
 
-  register(payload) {
-    const users = DB.getData(DB.KEYS.users);
-    if (
-      users.some((u) => u.email.toLowerCase() === payload.email.toLowerCase())
-    ) {
-      return { ok: false, error: "An account with this email already exists." };
+  async register(payload) {
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        return { ok: false, error: result.message || 'Registration failed.' };
+      }
+      return { ok: true, user: result.user };
+    } catch (error) {
+      return { ok: false, error: 'Unable to reach the server.' };
     }
-    const students = DB.getData(DB.KEYS.students);
-    const studentId = DB.generateId("STU");
-    const newStudent = {
-      id: studentId,
-      name: payload.name,
-      email: payload.email,
-      phone: payload.phone || "",
-      department: payload.department || "",
-      session: "2025-2026",
-      gender: payload.gender || "",
-      dob: "",
-      address: "",
-      guardianName: "",
-      guardianPhone: "",
-      hostelId: null,
-      roomId: null,
-      admissionDate: new Date().toISOString().slice(0, 10),
-      status: "Active",
-    };
-    students.push(newStudent);
-    DB.saveData(DB.KEYS.students, students);
-
-    const newUser = {
-      id: DB.generateId("USR"),
-      name: payload.name,
-      email: payload.email,
-      password: payload.password,
-      role: "student",
-      studentId,
-    };
-    users.push(newUser);
-    DB.saveData(DB.KEYS.users, users);
-    return { ok: true };
   },
 
-  resetPassword(email, newPassword) {
-    const users = DB.getData(DB.KEYS.users);
-    const idx = users.findIndex(
-      (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
-    );
-    if (idx === -1)
-      return { ok: false, error: "No account found with that email." };
-    users[idx].password = newPassword;
-    DB.saveData(DB.KEYS.users, users);
-    return { ok: true };
+  async resetPassword(email, newPassword) {
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: newPassword })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        return { ok: false, error: result.message || 'Password reset failed.' };
+      }
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: 'Unable to reach the server.' };
+    }
   },
 };
