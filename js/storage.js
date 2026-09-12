@@ -19,6 +19,26 @@ const DB = {
     theme: 'hms_theme'
   },
 
+  async syncFromServer() {
+    if (!window.fetch) return;
+    const collections = Object.values(this.KEYS).filter((key) =>
+      !['currentUser', 'theme'].includes(key)
+    );
+
+    for (const key of collections) {
+      try {
+        const collectionName = Object.keys(this.KEYS).find((name) => this.KEYS[name] === key);
+        if (!collectionName) continue;
+        const response = await fetch(`/api/${collectionName}`);
+        if (!response.ok) continue;
+        const data = await response.json();
+        localStorage.setItem(key, JSON.stringify(data));
+      } catch (e) {
+        console.warn('DB.syncFromServer skipped for', key, e);
+      }
+    }
+  },
+
   getData(key) {
     try {
       const raw = localStorage.getItem(key);
@@ -37,7 +57,9 @@ const DB = {
       return true;
     } catch (e) {
       console.error('DB.saveData error for', key, e);
-      Utils.showToast('Storage error — data may not have been saved.', 'error');
+      if (window.Utils && Utils.showToast) {
+        Utils.showToast('Storage error — data may not have been saved.', 'error');
+      }
       return false;
     }
   },
@@ -46,6 +68,16 @@ const DB = {
     const arr = this.getData(key);
     arr.push(record);
     this.saveData(key, arr);
+    if (window.fetch) {
+      const collectionName = Object.keys(this.KEYS).find((name) => this.KEYS[name] === key);
+      if (collectionName) {
+        fetch(`/api/${collectionName}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        }).catch(() => {});
+      }
+    }
     return record;
   },
 
@@ -55,6 +87,16 @@ const DB = {
     if (idx === -1) return null;
     arr[idx] = { ...arr[idx], ...updates };
     this.saveData(key, arr);
+    if (window.fetch && typeof id !== 'undefined') {
+      const collectionName = Object.keys(this.KEYS).find((name) => this.KEYS[name] === key);
+      if (collectionName) {
+        fetch(`/api/${collectionName}/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(arr[idx])
+        }).catch(() => {});
+      }
+    }
     return arr[idx];
   },
 
@@ -62,6 +104,14 @@ const DB = {
     const arr = this.getData(key);
     const next = arr.filter(r => r[idField] !== id);
     this.saveData(key, next);
+    if (window.fetch && typeof id !== 'undefined') {
+      const collectionName = Object.keys(this.KEYS).find((name) => this.KEYS[name] === key);
+      if (collectionName) {
+        fetch(`/api/${collectionName}/${id}`, {
+          method: 'DELETE'
+        }).catch(() => {});
+      }
+    }
     return next.length !== arr.length;
   },
 
